@@ -32,10 +32,20 @@ def planck_law(wavelength, temperature):
     返回:
         float or numpy.ndarray: 给定波长和温度下的辐射强度 (W/(m²·m))
     """
-    # 普朗克黑体辐射公式
+    # 实现普朗克黑体辐射公式
     a = 2 * H * C**2
     b = (H * C) / (wavelength * K_B * temperature)
-    intensity = a / ( (wavelength**5) * (np.exp(b) - 1) )
+    
+    # 处理数值稳定性问题
+    with np.errstate(all='ignore'):
+        intensity = a / (wavelength**5) / (np.exp(b) - 1)
+    
+    # 处理可能的溢出情况
+    if isinstance(wavelength, np.ndarray):
+        intensity[np.isinf(intensity)] = 0
+    elif np.isinf(intensity):
+        intensity = 0
+        
     return intensity
 
 
@@ -53,10 +63,8 @@ def calculate_visible_power_ratio(temperature):
     def integrand(wavelength):
         return planck_law(wavelength, temperature)
     
-    # 计算总辐射的积分 (从0到无穷大)
-    # 根据斯特藩-玻尔兹曼定律，总辐射与T^4成正比
-    # 但为了精确计算，我们使用数值积分
-    total_power, _ = integrate.quad(integrand, 1e-12, 1e-5)  # 使用合理的积分限
+    # 计算总辐射功率 (从1e-12到1e-5m范围足够覆盖)
+    total_power, _ = integrate.quad(integrand, 1e-12, 1e-5)
     
     # 计算可见光部分的功率
     visible_power, _ = integrate.quad(integrand, VISIBLE_LIGHT_MIN, VISIBLE_LIGHT_MAX)
@@ -77,13 +85,8 @@ def plot_efficiency_vs_temperature(temp_range):
     返回:
         tuple: (matplotlib.figure.Figure, numpy.ndarray, numpy.ndarray) 图形对象、温度数组、效率数组
     """
-    efficiencies = np.zeros_like(temp_range)
+    efficiencies = np.array([calculate_visible_power_ratio(T) for T in temp_range])
     
-    # 计算每个温度下的效率
-    for i, temp in enumerate(temp_range):
-        efficiencies[i] = calculate_visible_power_ratio(temp)
-    
-    # 绘制图形
     fig = plt.figure(figsize=(10, 6))
     plt.plot(temp_range, efficiencies, 'b-')
     plt.xlabel('Temperature (K)')
@@ -106,12 +109,18 @@ def find_optimal_temperature():
         return -calculate_visible_power_ratio(T)
     
     # 使用黄金分割法寻找最小值
-    result = minimize_scalar(objective_func, bounds=(1000, 10000), method='bounded', options={'xatol': 1.0})
+    result = minimize_scalar(
+        objective_func,
+        bounds=(1000, 10000),
+        method='bounded',
+        options={'xatol': 1.0}
+    )
     
     optimal_temp = result.x
     optimal_efficiency = -result.fun
     
     return optimal_temp, optimal_efficiency
+
 
 
 def main():
@@ -149,6 +158,9 @@ def main():
     plt.savefig('optimal_temperature.png', dpi=300)
     plt.show()
 
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()
