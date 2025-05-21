@@ -27,8 +27,8 @@ def lagrange_equation(r):
     返回:
         float: 方程左右两边的差值，当r为L1点位置时接近零
     """
-    term_earth = G * M / r**2          # 地球引力项
-    term_moon = G * m / (R - r)**2     # 月球引力项
+    term_earth = G * M / (r**2)          # 地球引力项
+    term_moon = G * m / ((R - r)**2)     # 月球引力项
     term_centrifugal = omega**2 * r    # 离心力项
     return term_earth - term_moon - term_centrifugal
 
@@ -42,10 +42,10 @@ def lagrange_equation_derivative(r):
     返回:
         float: 方程的导数值
     """
-    d_earth = -2 * G * M / r**3       # 地球引力项导数
-    d_moon = 2 * G * m / ((R - r)**3)   # 月球引力项导数
-    d_centrifugal = -omega**2         # 离心力项导数
-    return d_earth + d_moon + d_centrifugal
+    d_earth = -2 * G * M / (r**3)       # 地球引力项导数
+    d_moon = -2 * G * m / ((R - r)**3)   # 月球引力项导数
+    d_centrifugal = omega**2         # 离心力项导数
+    return d_earth + d_moon - d_centrifugal
 
 def newton_method(f, df, x0, tol=1e-8, max_iter=100):
     """
@@ -77,11 +77,16 @@ def newton_method(f, df, x0, tol=1e-8, max_iter=100):
             break
         
         delta = fx / dfx
-        x -= delta         # 牛顿迭代公式
+        x1 = x - delta         # 牛顿迭代公式
         
         if abs(delta / x) < tol:  # 附加收敛条件（解的变化量）
             converged = True
+            iterations = i + 1
+            x = x1
             break
+        
+        x = x1
+        iterations = i + 1
     
     return x, iterations, converged
 
@@ -216,4 +221,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
